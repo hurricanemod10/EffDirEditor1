@@ -1,5 +1,0 @@
-pyinstaller
-
-# Requirements for EffDirEditor
-# (all core modules: argparse, json are built-in to Python)
-
