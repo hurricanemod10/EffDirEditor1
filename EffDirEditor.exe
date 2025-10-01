@@ -25,12 +25,14 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build EXE with PyInstaller
+      - name: Build executable
         run: |
-          pyinstaller --onefile main.py --name EffDirEditor
+          pyinstaller --onefile main.py --name EffDirEditor_v1.0
 
-      - name: Upload EXE artifact with version
+      - name: Upload EXE artifact
         uses: actions/upload-artifact@v3
         with:
           name: EffDirEditor_v1.0
-          path: dist/EffDirEditor.exe
+          path: dist/EffDirEditor_v1.0.exe
+
+Add GitHub Actions workflow to build EXE
