@@ -55,7 +55,7 @@ jobs:
           if exist .github\workflows\build.yml copy .github\workflows\build.yml package\
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: EffDirEditor-Package-v1.0
           path: package/*
