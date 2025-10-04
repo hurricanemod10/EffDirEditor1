@@ -1,6 +1,6 @@
 import argparse
 
-def main():
+fun main():
     print("Effect Dir Editor v1.0 starting...")
     # This just ensures the build runs correctly.
     # Later we’ll connect this to read_effdir, write_effdir, and isolate_eff.
