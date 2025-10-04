@@ -2,6 +2,7 @@
 # Line-by-line Python translation of ReadEffDir.m (struct-style)
 import struct
 
+function
 def _read_uint32(f):
     data = f.read(4)
     if len(data)!=4:
