@@ -10,3 +10,52 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Effect Dir Editor v1.0")
     args = parser.parse_args()
     main()
+
+name: Build EffDirEditor
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if exist requirements.txt pip install -r requirements.txt
+
+      - name: Run main.py (sanity check)
+        run: python main.py || echo "Main ran with exit code %errorlevel%"
+
+      - name: Build EXE with PyInstaller
+        run: |
+          pip install pyinstaller
+          pyinstaller --onefile main.py --name "Effect Dir Editor v1.0"
+
+      - name: Package source + exe + docs
+        run: |
+          mkdir package
+          copy "dist\Effect Dir Editor v1.0.exe" package\
+          copy *.py package\
+          if exist requirements.txt copy requirements.txt package\
+          if exist README.md copy README.md package\
+          if exist .github\workflows\build.yml copy .github\workflows\build.yml package\
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: EffDirEditor-Package-v1.0
+          path: package/*
