@@ -2,14 +2,14 @@
 # Line-by-line Python translation of WriteEffDir.m
 import struct
 
-def _write_uint32(f, v): f.write(struct.pack("<I", int(v) & 0xFFFFFFFF))
-def _write_int32(f, v): f.write(struct.pack("<i", int(v)))
-def _write_uint16(f, v): f.write(struct.pack("<H", int(v) & 0xFFFF))
-def _write_int16(f, v): f.write(struct.pack("<h", int(v)))
-def _write_uint8(f, v): f.write(struct.pack("<B", int(v) & 0xFF))
-def _write_int8(f, v): f.write(struct.pack("<b", int(v)))
-def _write_float(f, v): f.write(struct.pack("<f", float(v)))
-def _write_bytes(f, b): f.write(bytes(b))
+func _write_uint32(f, v): f.write(struct.pack("<I", int(v) & 0xFFFFFFFF))
+func _write_int32(f, v): f.write(struct.pack("<i", int(v)))
+func _write_uint16(f, v): f.write(struct.pack("<H", int(v) & 0xFFFF))
+func _write_int16(f, v): f.write(struct.pack("<h", int(v)))
+func _write_uint8(f, v): f.write(struct.pack("<B", int(v) & 0xFF))
+func _write_int8(f, v): f.write(struct.pack("<b", int(v)))
+func _write_float(f, v): f.write(struct.pack("<f", float(v)))
+func _write_bytes(f, b): f.write(bytes(b))
 
 def write_effdir(path, effdir):
     """
