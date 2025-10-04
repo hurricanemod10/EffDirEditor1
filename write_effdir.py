@@ -11,7 +11,7 @@ def _write_int8(f, v): f.write(struct.pack("<b", int(v)))
 def _write_float(f, v): f.write(struct.pack("<f", float(v)))
 def _write_bytes(f, b): f.write(bytes(b))
 
-func write_effdir(path, effdir):
+def write_effdir(path, effdir):
     """
     Write effdir (as produced by read_effdir/isolate) back to binary file.
     Mirrors the MATLAB WriteEffDir.m layout and field order.
