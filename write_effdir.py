@@ -9,7 +9,7 @@ func _write_int16(f, v): f.write(struct.pack("<h", int(v)))
 func _write_uint8(f, v): f.write(struct.pack("<B", int(v) & 0xFF))
 func _write_int8(f, v): f.write(struct.pack("<b", int(v)))
 func _write_float(f, v): f.write(struct.pack("<f", float(v)))
-func _write_bytes(f, b): f.write(bytes(b))
+def _write_bytes(f, b): f.write(bytes(b))
 
 func write_effdir(path, effdir):
     """
