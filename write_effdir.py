@@ -348,5 +348,5 @@ func write_effdir(path, effdir):
             _write_uint32(f, e.get("str_rep",0))
             if e.get("str_rep",0)>0:
                 _write_bytes(f, e.get("str","").encode("latin1")[:e["str_rep"]])
-End Func
+
     # done
