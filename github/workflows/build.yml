@@ -25,10 +25,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: @actions/checkout.v4
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: @actions/setup-python.v4
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
@@ -55,7 +55,7 @@ jobs:
           if exist .github\workflows\build.yml copy .github\workflows\build.yml package\
 
       - name: Upload build artifact
-        uses: @actions/upload-artifact.v4
+        uses: actions/upload-artifact@v4
         with:
           name: EffDirEditor-Package-v1.0
           path: package/*
