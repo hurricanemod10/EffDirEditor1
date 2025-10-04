@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 import traceback
+import struct
 
 def main():
     print("Effect Dir Editor v1.0 starting...")
