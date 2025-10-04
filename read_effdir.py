@@ -1,4 +1,4 @@
-# read_effdir.py
+func read_effdir.py
 # Line-by-line Python translation of ReadEffDir.m (struct-style)
 import struct
 
