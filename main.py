@@ -15,7 +15,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main()
     
-func main.py
+# main.py
 """
 CLI entrypoint for EffDirEditor (minimal, robust).
 Usage examples:
