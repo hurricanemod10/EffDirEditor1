@@ -1,4 +1,1 @@
 pyinstaller
-argparse
-jsonschema
-struct
