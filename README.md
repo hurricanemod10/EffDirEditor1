@@ -22,3 +22,17 @@ Or use the provided **GitHub Action** which automatically builds the `.exe` in t
 
 ## Status
 Work in progress — based on reverse-engineered MATLAB scripts.
+
+# Effect Dir Editor v1.0
+
+A tool to read, write, and isolate sections from `.effdir` files.
+
+## Download
+The latest build is available from the GitHub Actions artifacts:  
+- Artifact name: **EffDirEditor-Package-v1.0.zip**  
+- Inside, run: **Effect Dir Editor v1.0.exe**
+
+## Features
+- Read and write `.effdir` files
+- Isolate and manipulate effects
+- Portable EXE build for Windows
