@@ -42,6 +42,11 @@ def read_effdir(path):
         # we'll read two uint16 exactly like your MATLAB header
         effdir["init"] = [_read_uint16(f), _read_uint16(f)]
 
+function ReadEffDir(effdir,combfn)
+% ReadEffDir - read the effdir structure to a binary file
+% Mirrors ReadEffDir.m
+% JENX, Matlab R2011a
+
         # Section 1
         sec1 = {}
         sec1["n_entries"] = _read_uint32(f)
