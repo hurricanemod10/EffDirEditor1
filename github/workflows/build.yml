@@ -1,35 +1,86 @@
-name: Build EffDirEditor EXE
+# main.py
+# Effect Dir Editor v1.0
+
+import sys
+import os
+from read_effdir import read_effdir
+from write_effdir import write_effdir
+from isolate_eff import isolate_eff
+
+APP_NAME = "Effect Dir Editor v1.0"
+
+def main():
+    print(f"Launching {APP_NAME}...")
+    
+    # Example workflow (you can customize)
+    effdir_path = input("Enter path to EffDir file: ").strip()
+    if not os.path.exists(effdir_path):
+        print(f"Error: File '{effdir_path}' not found.")
+        sys.exit(1)
+
+    try:
+        effdir = read_effdir(effdir_path)
+        print("EffDir read successfully.")
+
+        # Example isolate step
+        index = int(input("Enter section index to isolate: "))
+        unique_name = input("Enter new unique effect name: ").strip()
+
+        new_effdir = isolate_eff(effdir, index, unique_name)
+        output_path = f"isolated_{os.path.basename(effdir_path)}"
+        write_effdir(new_effdir, output_path)
+
+        print(f"✅ Isolated EffDir saved to {output_path}")
+        print(f"{APP_NAME} finished successfully.")
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+
+name: Build EffDirEditor v1.0
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
 
-    - name: Build EXE
-      run: pyinstaller --onefile main.py --name EffDirEditor-v1.0
+      - name: Build executable
+        run: |
+          pyinstaller main.py --name "Effect Dir Editor v1.0" --onefile
+          mkdir build_output
+          copy dist/"Effect Dir Editor v1.0.exe" build_output/
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: EffDirEditor-v1.0
-        path: dist/EffDirEditor-v1.0.exe
+      - name: Package build artifact
+        run: |
+          powershell Compress-Archive -Path build_output -DestinationPath EffDirEditor-Package-v1.0.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EffDirEditor-Package-v1.0
+          path: EffDirEditor-Package-v1.0.zip
+
