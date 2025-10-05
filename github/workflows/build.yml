@@ -41,16 +41,15 @@ def main():
 if __name__ == "__main__":
     main()
 
-name: Auto Build and Version EffDirEditor
+name: Build and Release Effect Dir Editor
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 permissions:
-  contents: write  # Needed to push version updates
+  contents: write
 
 jobs:
   build:
@@ -59,34 +58,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Read and bump version
-        id: versioning
-        shell: pwsh
-        run: |
-          $versionFile = "version.txt"
-          $version = Get-Content $versionFile | ForEach-Object { $_.Trim() }
-          Write-Host "Current version: $version"
-          $parts = $version.Split('.')
-          if ($parts.Count -gt 1) {
-              $parts[-1] = [int]$parts[-1] + 1
-          } else {
-              $parts += "1"
-          }
-          $newVersion = $parts -join '.'
-          Write-Host "New version: $newVersion"
-          Set-Content $versionFile $newVersion
-          echo "version=$newVersion" >> $env:GITHUB_OUTPUT
-
-      - name: Commit new version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add version.txt
-          git commit -m "Auto bump version to v${{ steps.versioning.outputs.version }}"
-          git push
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -95,24 +66,53 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: Read and bump version
+        id: versioning
+        run: |
+          echo "Current version:"
+          type version.txt
+          $version = Get-Content version.txt
+          $split = $version.Split('.')
+          $major = [int]$split[0]
+          $minor = [int]$split[1] + 1
+          $newVersion = "$major.$minor"
+          echo $newVersion > version.txt
+          echo "version=$newVersion" >> $env:GITHUB_OUTPUT
+
       - name: Build executable
         run: |
-          $version = "${{ steps.versioning.outputs.version }}"
-          pyinstaller main.py --name "Effect Dir Editor v$version" --onefile
-          mkdir build_output
-          copy dist/"Effect Dir Editor v$version.exe" build_output/
+          pyinstaller --onefile --name "Effect Dir Editor v${{ steps.versioning.outputs.version }}" main.py
+          mkdir package
+          copy dist\\"Effect Dir Editor v${{ steps.versioning.outputs.version }}.exe" package\\
+          copy README.md package\\
+          copy version.txt package\\
 
-      - name: Package build artifact
+      - name: Create ZIP artifact
         run: |
-          $version = "${{ steps.versioning.outputs.version }}"
-          powershell Compress-Archive -Path build_output -DestinationPath "EffDirEditor-Package-v$version.zip"
+          powershell Compress-Archive -Path package\\* -DestinationPath "EffDirEditor-Package-v${{ steps.versioning.outputs.version }}.zip"
 
-      - name: Upload artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}
           path: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}.zip
+
+      - name: Generate release notes
+        id: notes
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.versioning.outputs.version }}
+          name: Effect Dir Editor v${{ steps.versioning.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
+          files: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}.zip
