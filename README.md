@@ -36,3 +36,15 @@ The latest build is available from the GitHub Actions artifacts:
 - Read and write `.effdir` files
 - Isolate and manipulate effects
 - Portable EXE build for Windows
+
+- # Effect Dir Editor v1.0
+
+A Python-based EffDir file editor with isolation and writing capabilities.
+
+## Version
+v1.0
+
+## Build
+This app is automatically built on GitHub Actions into an artifact:
+**EffDirEditor-Package-v1.0.zip**
+
