@@ -41,13 +41,16 @@ def main():
 if __name__ == "__main__":
     main()
 
-name: Build EffDirEditor v1.0
+name: Auto Build and Version EffDirEditor
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: write  # Needed to push version updates
 
 jobs:
   build:
@@ -56,6 +59,34 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Read and bump version
+        id: versioning
+        shell: pwsh
+        run: |
+          $versionFile = "version.txt"
+          $version = Get-Content $versionFile | ForEach-Object { $_.Trim() }
+          Write-Host "Current version: $version"
+          $parts = $version.Split('.')
+          if ($parts.Count -gt 1) {
+              $parts[-1] = [int]$parts[-1] + 1
+          } else {
+              $parts += "1"
+          }
+          $newVersion = $parts -join '.'
+          Write-Host "New version: $newVersion"
+          Set-Content $versionFile $newVersion
+          echo "version=$newVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Commit new version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add version.txt
+          git commit -m "Auto bump version to v${{ steps.versioning.outputs.version }}"
+          git push
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -70,17 +101,18 @@ jobs:
 
       - name: Build executable
         run: |
-          pyinstaller main.py --name "Effect Dir Editor v1.0" --onefile
+          $version = "${{ steps.versioning.outputs.version }}"
+          pyinstaller main.py --name "Effect Dir Editor v$version" --onefile
           mkdir build_output
-          copy dist/"Effect Dir Editor v1.0.exe" build_output/
+          copy dist/"Effect Dir Editor v$version.exe" build_output/
 
       - name: Package build artifact
         run: |
-          powershell Compress-Archive -Path build_output -DestinationPath EffDirEditor-Package-v1.0.zip
+          $version = "${{ steps.versioning.outputs.version }}"
+          powershell Compress-Archive -Path build_output -DestinationPath "EffDirEditor-Package-v$version.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: EffDirEditor-Package-v1.0
-          path: EffDirEditor-Package-v1.0.zip
-
+          name: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}
+          path: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}.zip
