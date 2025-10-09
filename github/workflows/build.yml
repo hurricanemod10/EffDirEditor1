@@ -1,52 +1,10 @@
-# main.py
-# Effect Dir Editor v1.0
 
-import sys
-import os
-from read_effdir import read_effdir
-from write_effdir import write_effdir
-from isolate_eff import isolate_eff
-
-APP_NAME = "Effect Dir Editor v1.0"
-
-def main():
-    print(f"Launching {APP_NAME}...")
-    
-    # Example workflow (you can customize)
-    effdir_path = input("Enter path to EffDir file: ").strip()
-    if not os.path.exists(effdir_path):
-        print(f"Error: File '{effdir_path}' not found.")
-        sys.exit(1)
-
-    try:
-        effdir = read_effdir(effdir_path)
-        print("EffDir read successfully.")
-
-        # Example isolate step
-        index = int(input("Enter section index to isolate: "))
-        unique_name = input("Enter new unique effect name: ").strip()
-
-        new_effdir = isolate_eff(effdir, index, unique_name)
-        output_path = f"isolated_{os.path.basename(effdir_path)}"
-        write_effdir(new_effdir, output_path)
-
-        print(f"✅ Isolated EffDir saved to {output_path}")
-        print(f"{APP_NAME} finished successfully.")
-
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
-
-name: Build and Release Effect Dir Editor
+name: Build and Release EffDirEditor
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -56,63 +14,56 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Read and bump version
-        id: versioning
-        run: |
-          echo "Current version:"
-          type version.txt
-          $version = Get-Content version.txt
-          $split = $version.Split('.')
-          $major = [int]$split[0]
-          $minor = [int]$split[1] + 1
-          $newVersion = "$major.$minor"
-          echo $newVersion > version.txt
-          echo "version=$newVersion" >> $env:GITHUB_OUTPUT
-
       - name: Build executable
         run: |
-          pyinstaller --onefile --name "Effect Dir Editor v${{ steps.versioning.outputs.version }}" main.py
-          mkdir package
-          copy dist\\"Effect Dir Editor v${{ steps.versioning.outputs.version }}.exe" package\\
-          copy README.md package\\
-          copy version.txt package\\
+          pyinstaller --onefile --name "EffDirEditor" main.py
+          mkdir build_artifact
+          copy dist\EffDirEditor.exe build_artifact\EffDirEditor.exe
+          copy README.md build_artifact\
+          copy requirements.txt build_artifact\
 
-      - name: Create ZIP artifact
-        run: |
-          powershell Compress-Archive -Path package\\* -DestinationPath "EffDirEditor-Package-v${{ steps.versioning.outputs.version }}.zip"
+      - name: Create artifact ZIP
+        run: powershell Compress-Archive -Path build_artifact\* -DestinationPath EffDirEditor-Package-${{ github.run_number }}.zip
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}
-          path: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}.zip
+          name: EffDirEditor-Package-v${{ github.run_number }}
+          path: EffDirEditor-Package-${{ github.run_number }}.zip
 
-      - name: Generate release notes
-        id: notes
-        uses: release-drafter/release-drafter@v6
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
         with:
-          config-name: release-drafter.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: EffDirEditor-Package-v${{ github.run_number }}
+          path: .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.versioning.outputs.version }}
-          name: Effect Dir Editor v${{ steps.versioning.outputs.version }}
-          body: ${{ steps.notes.outputs.body }}
-          files: EffDirEditor-Package-v${{ steps.versioning.outputs.version }}.zip
+          tag_name: v${{ github.run_number }}
+          name: Effect Dir Editor v${{ github.run_number }}
+          body: |
+            🚀 **New Release** of Effect Dir Editor v${{ github.run_number }}  
+            - Automatic executable build  
+            - Includes README and requirements.txt  
+            - Bug fixes and improvements
+          files: EffDirEditor-Package-${{ github.run_number }}.zip
