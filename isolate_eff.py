@@ -1,6 +1,6 @@
 # isolate_eff.py
 # Translate of IsolateEff.m to Python, keeps logic and indexing
-def isolate_eff(effdir, index, unique_effect_name):
+func isolate_eff(effdir, index, unique_effect_name):
     """
     effdir: dict from read_effdir
     index: integer index into sec(13).entry (MATLAB style, 1-based)
