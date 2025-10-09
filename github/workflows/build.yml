@@ -1,13 +1,8 @@
-
-name: Build and Release EffDirEditor
+name: Build EffDirEditor EXE
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: write
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -20,52 +15,53 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
           pip install pyinstaller
 
       - name: Build executable
         run: |
-          pyinstaller --onefile --name "EffDirEditor" main.py
-          mkdir build_artifact
-          copy dist\EffDirEditor.exe build_artifact\EffDirEditor.exe
-          copy README.md build_artifact\
-          copy requirements.txt build_artifact\
+          pyinstaller --onefile main.py --name "EffDirEditor"
 
-      - name: Create artifact ZIP
-        run: powershell Compress-Archive -Path build_artifact\* -DestinationPath EffDirEditor-Package-${{ github.run_number }}.zip
+      - name: Read and bump version
+        id: version
+        run: |
+          python - <<EOF
+          import re, pathlib
+          version_file = pathlib.Path("version.txt")
+          version = version_file.read_text().strip()
+          major, minor = map(int, version.split("."))
+          new_version = f"{major}.{minor + 1}"
+          version_file.write_text(new_version)
+          print(f"::set-output name=current::{version}")
+          print(f"::set-output name=new::{new_version}")
+          EOF
 
-      - name: Upload build artifact
+      - name: Create zip package
+        run: |
+          mkdir dist_zip
+          copy dist\EffDirEditor.exe dist_zip\
+          copy README.md dist_zip\
+          copy version.txt dist_zip\
+          powershell Compress-Archive -Path dist_zip\* -DestinationPath EffDirEditor-Package-v${{ steps.version.outputs.current }}.zip
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: EffDirEditor-Package-v${{ github.run_number }}
-          path: EffDirEditor-Package-${{ github.run_number }}.zip
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: EffDirEditor-Package-v${{ github.run_number }}
-          path: .
+          name: EffDirEditor-Package-v${{ steps.version.outputs.current }}
+          path: EffDirEditor-Package-v${{ steps.version.outputs.current }}.zip
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
-          name: Effect Dir Editor v${{ github.run_number }}
+          tag_name: v${{ steps.version.outputs.current }}
+          name: Effect Dir Editor v${{ steps.version.outputs.current }}
           body: |
-            🚀 **New Release** of Effect Dir Editor v${{ github.run_number }}  
-            - Automatic executable build  
-            - Includes README and requirements.txt  
-            - Bug fixes and improvements
-          files: EffDirEditor-Package-${{ github.run_number }}.zip
-
-Fixed workflow to include .exe build and auto release
+            🚀 **Effect Dir Editor v${{ steps.version.outputs.current }}**
+            - Automatic build from main branch
+            - Includes latest features and bug fixes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
