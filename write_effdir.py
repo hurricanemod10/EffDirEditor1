@@ -1,4 +1,4 @@
-func write_effdir(path, effdir):
+def write_effdir(path, effdir):
 # Line-by-line Python translation of WriteEffDir.m
 import struct
 
