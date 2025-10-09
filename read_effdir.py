@@ -1,472 +1,616 @@
-func read_effdir(path, effdir):
-# Line-by-line Python translation of ReadEffDir.m (struct-style)
+# read_effdir.py
+# Python translation of ReadEffDir.m (JENX) — Sections 1..15 + 13.5
+# Produces an `effdir` dictionary similar to MATLAB's struct output.
+
 import struct
+from collections import defaultdict
 
-
-def _read_uint32(f):
+def read_uint32(f):
     data = f.read(4)
-    if len(data)!=4:
-        raise EOFError("Unexpected EOF reading uint32")
+    if len(data) < 4:
+        raise EOFError("Unexpected EOF while reading uint32")
     return struct.unpack("<I", data)[0]
 
-def _read_int32(f):
-    data = f.read(4); return struct.unpack("<i", data)[0]
+def read_int32(f):
+    data = f.read(4)
+    if len(data) < 4:
+        raise EOFError("Unexpected EOF while reading int32")
+    return struct.unpack("<i", data)[0]
 
-def _read_uint16(f):
-    data = f.read(2); return struct.unpack("<H", data)[0]
+def read_uint16(f):
+    data = f.read(2)
+    if len(data) < 2:
+        raise EOFError("Unexpected EOF while reading uint16")
+    return struct.unpack("<H", data)[0]
 
-def _read_int16(f):
-    data = f.read(2); return struct.unpack("<h", data)[0]
+def read_int16(f):
+    data = f.read(2)
+    if len(data) < 2:
+        raise EOFError("Unexpected EOF while reading int16")
+    return struct.unpack("<h", data)[0]
 
-def _read_uint8(f):
-    data = f.read(1); return struct.unpack("<B", data)[0]
+def read_uint8(f):
+    data = f.read(1)
+    if len(data) < 1:
+        raise EOFError("Unexpected EOF while reading uint8")
+    return struct.unpack("<B", data)[0]
 
-def _read_int8(f):
-    data = f.read(1); return struct.unpack("<b", data)[0]
+def read_int8(f):
+    data = f.read(1)
+    if len(data) < 1:
+        raise EOFError("Unexpected EOF while reading int8")
+    return struct.unpack("<b", data)[0]
 
-def _read_float(f):
-    data = f.read(4); return struct.unpack("<f", data)[0]
+def read_float(f):
+    data = f.read(4)
+    if len(data) < 4:
+        raise EOFError("Unexpected EOF while reading float32")
+    return struct.unpack("<f", data)[0]
 
-def _read_bytes(f, n):
+def read_bytes(f, n):
     data = f.read(n)
-    if len(data) != n:
-        raise EOFError(f"Unexpected EOF reading {n} bytes")
+    if len(data) < n:
+        raise EOFError(f"Unexpected EOF while reading {n} bytes")
     return data
 
-def read_effdir(path):
-    """
-    Read an .eff file into a nested dict structure effdir similar to MATLAB effdir struct.
-    """
-    effdir = {"sec": {}}
-    with open(path, "rb") as f:
-        # header: originally fread(fid,2,'uint16') in MATLAB; earlier translations sometimes used different counts
-        # we'll read two uint16 exactly like your MATLAB header
-        effdir["init"] = [_read_uint16(f), _read_uint16(f)]
+def read_string(f, length, encoding="latin1"):
+    if length <= 0:
+        return ""
+    raw = read_bytes(f, length)
+    try:
+        return raw.decode(encoding, errors="ignore")
+    except Exception:
+        return raw.decode("latin1", errors="ignore")
 
-        # Section 1
+def read_ubit_n_as_int(f, n_bytes):
+    """Read N bytes and return little-endian integer"""
+    raw = read_bytes(f, n_bytes)
+    return int.from_bytes(raw, byteorder="little", signed=False)
+
+def read_effdir(filename):
+    effdir = {"sec": defaultdict(dict)}
+
+    with open(filename, "rb") as f:
+        # FILE HEADER: 2 x uint16
+        effdir["init"] = [read_uint16(f), read_uint16(f)]
+
+        # ---------------------------
+        # SECTION 1 - Main Section
+        # ---------------------------
         sec1 = {}
-        sec1["n_entries"] = _read_uint32(f)
+        sec1["n_entries"] = read_uint32(f)
         sec1["entry"] = []
+
         for _ in range(sec1["n_entries"]):
             e = {}
-            # The original is very large; read fields in same order as your MATLAB comments/translations
-            e["u1"] = _read_int32(f)
-            e["u2"] = _read_int32(f)
-            e["u3"] = _read_int32(f)
-            e["dur_min"] = _read_float(f)
-            e["dur_max"] = _read_float(f)
-            e["high_detail"] = _read_float(f)
-            e["loop"] = _read_uint32(f)
-            e["u4"] = _read_float(f)
-            e["u5"] = _read_float(f)
-            e["u6"] = _read_float(f)
-            e["delay_min"] = _read_float(f)
-            e["delay_max"] = _read_float(f)
-            e["x_axis_push_min"] = _read_float(f)
-            e["z_axis_push_min"] = _read_float(f)
-            e["y_axis_push_min"] = _read_float(f)
-            e["x_axis_push_max"] = _read_float(f)
-            e["z_axis_push_max"] = _read_float(f)
-            e["y_axis_push_max"] = _read_float(f)
-            e["init_vel_min"] = _read_float(f)
-            e["init_vel_max"] = _read_float(f)
-            e["initial_x_axis_shift_min"] = _read_float(f)
-            e["initial_z_axis_shift_min"] = _read_float(f)
-            e["initial_y_axis_shift_min"] = _read_float(f)
-            e["initial_x_axis_shift_max"] = _read_float(f)
-            e["initial_z_axis_shift_max"] = _read_float(f)
-            e["initial_y_axis_shift_max"] = _read_float(f)
-            e["initial_size_varation_pc"] = _read_float(f)
-            e["initial_x_axis_stretch_max"] = _read_float(f)
-            e["initial_spin_variation_max"] = _read_float(f)
-            e["u7"] = _read_float(f)
-            e["initial_alpha_var_max"] = _read_float(f)
-            e["initial_color_var_pc_red"] = _read_float(f)
-            e["initial_color_var_pc_green"] = _read_float(f)
-            e["initial_color_var_pc_blue"] = _read_float(f)
+            # Read a long sequence of fields following the MATLAB comment order.
+            # Many are DWORD (uint32) or float32 — translate as appropriate.
+            # We'll follow the ordering described in the MATLAB file comments.
 
-            # u8 reps (count then floats)
-            e["u8_rep"] = _read_uint32(f)
-            e["u8"] = [_read_float(f) for __ in range(e["u8_rep"])]
+            # Basic header DWORDs
+            e["dword1"] = read_uint32(f)
+            e["constant0"] = read_uint32(f)  # usually 0x00000000
+            e["dword2"] = read_uint32(f)
 
-            # color adjustments (triples)
-            e["color_adj_over_time_rep"] = _read_uint32(f)
-            e["red"] = []
-            e["green"] = []
-            e["blue"] = []
-            for __ in range(e["color_adj_over_time_rep"]):
-                e["red"].append(_read_float(f))
-                e["green"].append(_read_float(f))
-                e["blue"].append(_read_float(f))
+            # Duration min/max, released high detail, repeat flag
+            e["duration_min"] = read_uint32(f)
+            e["duration_max"] = read_uint32(f)
+            e["released_high_detail"] = read_uint32(f)
+            e["repeat_flag"] = read_uint32(f)
 
-            # brightness reps
-            e["bright_adj_over_time_rep"] = _read_uint32(f)
-            e["bright"] = [_read_float(f) for __ in range(e["bright_adj_over_time_rep"])]
+            # Some more DWORDs (time delay, pushes, velocity, shifts, size/variants)
+            e["dword3"] = read_uint32(f)
+            e["dword4"] = read_uint32(f)
+            e["dword5"] = read_uint32(f)
 
-            # size reps
-            e["size_over_time_rep"] = _read_uint32(f)
-            e["size"] = [_read_float(f) for __ in range(e["size_over_time_rep"])]
+            e["time_delay_min"] = read_uint32(f)
+            e["time_delay_max"] = read_uint32(f)
 
-            # x shrink
-            e["x_shrink_over_time_rep"] = _read_uint32(f)
-            e["x_shrink"] = [_read_float(f) for __ in range(e["x_shrink_over_time_rep"])]
+            e["x_push_min"] = read_uint32(f)
+            e["z_push_min"] = read_uint32(f)
+            e["y_push_min"] = read_uint32(f)
+            e["x_push_max"] = read_uint32(f)
+            e["z_push_max"] = read_uint32(f)
+            e["y_push_max"] = read_uint32(f)
 
-            # spin over time
-            e["spin_over_time_rep"] = _read_uint32(f)
-            e["spin"] = [_read_float(f) for __ in range(e["spin_over_time_rep"])]
+            e["velocity_min"] = read_uint32(f)
+            e["velocity_max"] = read_uint32(f)
 
-            e["main_resource_key"] = _read_uint32(f)
-            e["u9"] = _read_int16(f)
-            e["u10"] = _read_uint32(f)
+            e["x_shift_min"] = read_uint32(f)
+            e["z_shift_min"] = read_uint32(f)
+            e["y_shift_min"] = read_uint32(f)
+            e["x_shift_max"] = read_uint32(f)
+            e["z_shift_max"] = read_uint32(f)
+            e["y_shift_max"] = read_uint32(f)
 
-            e["direction_travel_blur"] = _read_float(f)
-            e["x_force"] = _read_float(f)
-            e["y_force"] = _read_float(f)
-            e["z_force"] = _read_float(f)
-            e["carry"] = _read_float(f)
+            e["initial_size_var_pct"] = read_uint32(f)
+            e["x_stretch_max"] = read_uint32(f)
+            e["spin_var_max"] = read_uint32(f)
+            e["dword6"] = read_uint32(f)
+            e["alpha_var_max"] = read_uint32(f)
+            e["color_var_r"] = read_uint32(f)
+            e["color_var_g"] = read_uint32(f)
+            e["color_var_b"] = read_uint32(f)
 
-            # read dozens of trailing floats/dwords as per your MATALB file: keep same names
-            e["u11"] = _read_float(f); e["u12"] = _read_float(f); e["u13"] = _read_float(f)
-            e["u14"] = _read_float(f); e["u15"] = _read_float(f)
+            # Reps list (DWORD count + DWORD reps)
+            rep_count = read_uint32(f)
+            e["reps"] = [read_uint32(f) for _ in range(rep_count)]
 
-            e["spiral_travel_pattern_max"] = _read_float(f)
+            # Color adjustments over time (count + 3*float per rep)
+            color_rep = read_uint32(f)
+            e["color_adj_over_time"] = []
+            for _c in range(color_rep):
+                r = read_float(f)
+                g = read_float(f)
+                b = read_float(f)
+                e["color_adj_over_time"].append((r, g, b))
 
-            # u16: rep of 28-byte reps? Your writer used uint64/u32; we read as sequence of
-            e["u16_rep"] = _read_uint32(f)
-            e["u16"] = []
-            for __ in range(e["u16_rep"]):
-                # original used uint64 for some fields — read them as two uint64 and a uint32
-                u16block = {
-                    "u1": _read_uint32(f), # Note: using uint32 here to avoid platform issues; adapt if needed
-                    "u2": _read_uint32(f),
-                    "u3": _read_uint32(f),
-                    "u4": _read_uint32(f)
-                }
-                e["u16"].append(u16block)
+            # Brightness adjustments (count + float reps)
+            bright_rep = read_uint32(f)
+            e["brightness_over_time"] = [read_float(f) for _ in range(bright_rep)]
 
-            # u17..u33 etc (read as floats)
-            for label in ["u17","u18","u19","u20","u21","u22"]:
-                e[label] = _read_float(f)
-            e["u23_rep"] = _read_uint32(f)
-            e["u23"] = [_read_float(f) for __ in range(e["u23_rep"])]
+            # Size over time (count + float reps)
+            size_rep = read_uint32(f)
+            e["size_over_time"] = [read_float(f) for _ in range(size_rep)]
 
-            # tail floats
-            for label in ["u24","u25","u26","u27","u28","u29","u30","u31","u32","u33"]:
-                e[label] = _read_float(f)
+            # X-axis shrink/stretch over time
+            xstretch_rep = read_uint32(f)
+            e["xstretch_over_time"] = [read_float(f) for _ in range(xstretch_rep)]
 
-            # string u34
-            e["u34_str_rep"] = _read_uint32(f)
-            e["u34_str"] = ""
-            if e["u34_str_rep"]>0:
-                e["u34_str"] = f.read(e["u34_str_rep"]).decode("latin1", errors="ignore")
+            # Spin over time (count + reps as uint32 or float per original comment)
+            spin_rep = read_uint32(f)
+            e["spin_over_time"] = [read_uint32(f) for _ in range(spin_rep)]
 
-            # more floats
-            for label in ["u35","u36","u37","u38","u39","u40","u41","u42","u43","u44","u45","u46","u47","u48"]:
-                e[label] = _read_float(f)
+            # Resource key (uint32)
+            e["resource_key"] = read_uint32(f)
 
-            e["u49_rep"] = _read_uint32(f)
-            e["u49"] = [_read_float(f) for __ in range(e["u49_rep"])]
+            # 2 bytes (unknown)
+            e["two_bytes"] = read_uint16(f)
 
-            e["u50"] = _read_float(f)
-            e["u51"] = _read_float(f)
+            # Several DWORD/float fields for movement/forces
+            # Read several as floats where comments suggested float32, else uint32
+            # We'll read as float where axis/forces are involved:
+            e["d1"] = read_uint32(f)
+            e["direction_of_travel_blur"] = read_uint32(f)
+            e["x_force"] = read_uint32(f)
+            e["z_force"] = read_uint32(f)
+            e["y_force"] = read_uint32(f)
+            e["carry"] = read_uint32(f)
 
-            # coordinate system movements (32-byte reps -> 8 floats)
-            e["coord_syst_mvt_rep"] = _read_uint32(f)
-            e["coord"] = {"x1":[],"y1":[],"z1":[],"x2":[],"y2":[],"z2":[],"seq_num1":[],"seq_num2":[]}
-            for __ in range(e["coord_syst_mvt_rep"]):
-                e["coord"]["x1"].append(_read_float(f))
-                e["coord"]["y1"].append(_read_float(f))
-                e["coord"]["z1"].append(_read_float(f))
-                e["coord"]["x2"].append(_read_float(f))
-                e["coord"]["y2"].append(_read_float(f))
-                e["coord"]["z2"].append(_read_float(f))
-                e["coord"]["seq_num1"].append(_read_float(f))
-                e["coord"]["seq_num2"].append(_read_float(f))
+            # many follow-up DWORDS (read a sequence)
+            # read 9 additional DWORDs (to match the commented pattern)
+            e["more_dw"] = [read_uint32(f) for _ in range(9)]
 
-            e["u52"] = _read_float(f)
+            # Spiral travel pattern max
+            e["spiral_travel_max"] = read_uint32(f)
 
-            # u53 subentries
-            e["u53_rep"] = _read_uint32(f)
-            e["u53_str_rep"] = []
-            e["u53_str"] = []
-            e["u53_u1"] = []
-            for __ in range(e["u53_rep"]):
-                srep = _read_uint32(f)
-                e["u53_str_rep"].append(srep)
-                if srep>0:
-                    e["u53_str"].append(f.read(srep).decode("latin1", errors="ignore"))
-                else:
-                    e["u53_str"].append("")
-                e["u53_u1"].append(_read_float(f))
+            # 28-byte reps (count + each rep is 7 floats?)
+            spiral_rep = read_uint32(f)
+            e["spiral_reps"] = []
+            for _s in range(spiral_rep):
+                # read 28 bytes -> 7 floats (but 7*4 = 28) if intended as floats
+                vals = [read_float(f) for _ in range(7)]
+                e["spiral_reps"].append(vals)
 
-            e["u54"] = _read_float(f)
-            e["u55"] = _read_float(f)
+            # Additional unknown DWORDs (read 5)
+            e["post_spiral_dw"] = [read_uint32(f) for _ in range(5)]
 
-            # resource key list
-            e["resource_key_rep"] = _read_uint32(f)
-            e["resource_key"] = [_read_uint32(f) for __ in range(e["resource_key_rep"])]
+            # Coordinate system reps (count + 32-byte reps)
+            coord_rep = read_uint32(f)
+            e["coord_reps"] = []
+            for _c in range(coord_rep):
+                # 32 bytes -> 8 floats (X,Z,Y,X,Z,Y,seq,seq)
+                vals = [read_float(f) for _ in range(8)]
+                e["coord_reps"].append(vals)
 
-            e["u56"] = _read_float(f)
-            e["u57"] = _read_float(f)
+            # Sub-entries count -> string list
+            sub_count = read_uint32(f)
+            e["sub_entries"] = []
+            for _se in range(sub_count):
+                slen = read_uint32(f)
+                s = read_string(f, slen)
+                sub_dw = read_uint32(f)
+                e["sub_entries"].append({"str": s, "dw": sub_dw})
 
-            e["u58_rep"] = _read_uint32(f)
-            e["u58"] = [_read_float(f) for __ in range(e["u58_rep"])]
+            # More trailing DWORDs - read a small block
+            e["tail_dw1"] = read_uint32(f)
+            e["tail_dw2"] = read_uint32(f)
+            e["list_resource_keys_rep"] = read_uint32(f)
+            e["list_resource_keys"] = [read_uint32(f) for _ in range(e["list_resource_keys_rep"])]
+            e["tail_more"] = [read_uint32(f) for _ in range(3)]
 
-            e["eoe"] = _read_uint32(f)
+            # Next list (count + reps)
+            next_rep = read_uint32(f)
+            e["next_list"] = [read_uint32(f) for _ in range(next_rep)]
+
+            # End-of-entry marker (float probably 0x40800000)
+            e["entry_end_marker"] = read_uint32(f)
+
             sec1["entry"].append(e)
-        sec1["eos"] = _read_uint16(f)
+
+        # End of section marker 0x0001 (uint16)
+        sec1["eos"] = read_uint16(f)
         effdir["sec"][1] = sec1
 
-        # Section 2
+        # ---------------------------
+        # SECTION 2
+        # ---------------------------
         sec2 = {}
-        sec2["n_entries"] = _read_uint32(f)
+        sec2["n_entries"] = read_uint32(f)
         sec2["entry"] = []
         for _ in range(sec2["n_entries"]):
             e = {}
-            e["u1"] = _read_uint32(f)
-            e["resource_key"] = _read_uint32(f)
-            e["inverse_flg"] = _read_uint8(f)
-            e["repeat_flg"] = _read_uint8(f)
-            e["speed"] = _read_float(f)
+            e["u1"] = read_uint32(f)
+            e["resource_key"] = read_uint32(f)
+            e["inverse_flg"] = read_uint8(f)
+            e["repeat_flg"] = read_uint8(f)
+            e["speed"] = read_float(f)
 
-            rot_rep = _read_uint32(f)
+            # rotation over time
+            rot_rep = read_uint32(f)
             e["rotation_over_time_rep"] = rot_rep
-            e["rotation_over_time"] = [_read_float(f) for __ in range(rot_rep)]
+            e["rotation_over_time"] = [read_float(f) for _ in range(rot_rep)]
 
-            size_rep = _read_uint32(f)
+            # size adjustments over time
+            size_rep = read_uint32(f)
             e["size_over_time_rep"] = size_rep
-            e["size_over_time_pc"] = [_read_float(f) for __ in range(size_rep)]
+            e["size_over_time_pc"] = [read_float(f) for _ in range(size_rep)]
 
-            alpha_rep = _read_uint32(f)
+            # alpha over time
+            alpha_rep = read_uint32(f)
             e["alpha_over_time_rep"] = alpha_rep
-            e["alpha_over_time_pc"] = [_read_float(f) for __ in range(alpha_rep)]
+            e["alpha_over_time_pc"] = [read_float(f) for _ in range(alpha_rep)]
 
-            color_rep = _read_uint32(f)
+            # color adjustments over time (triples)
+            color_rep = read_uint32(f)
             e["color_adj_over_time_rep"] = color_rep
-            e["red"] = []; e["green"] = []; e["blue"] = []
-            for __ in range(color_rep):
-                e["red"].append(_read_float(f)); e["green"].append(_read_float(f)); e["blue"].append(_read_float(f))
+            e["red"] = []
+            e["green"] = []
+            e["blue"] = []
+            for _c in range(color_rep):
+                e["red"].append(read_float(f))
+                e["green"].append(read_float(f))
+                e["blue"].append(read_float(f))
 
-            yrep = _read_uint32(f)
+            # Y axis stretch over time
+            yrep = read_uint32(f)
             e["y_axis_stretch_over_time_rep"] = yrep
-            e["y_axis_stretch_over_time_pc"] = [_read_float(f) for __ in range(yrep)]
+            e["y_axis_stretch_over_time_pc"] = [read_float(f) for _ in range(yrep)]
 
-            e["initial_intensity_var"] = _read_float(f)
-            e["initial_size_var"] = _read_float(f)
-            e["u2"] = _read_float(f); e["u3"] = _read_float(f); e["u4"] = _read_float(f); e["u5"] = _read_float(f)
+            e["initial_intensity_var"] = read_float(f)
+            e["initial_size_var"] = read_float(f)
+            e["u2"] = read_float(f)
+            e["u3"] = read_float(f)
+            e["u4"] = read_float(f)
+            e["u5"] = read_float(f)
 
             sec2["entry"].append(e)
-        sec2["eos"] = _read_uint16(f)
+        sec2["eos"] = read_uint16(f)
         effdir["sec"][2] = sec2
 
-        # Section 3
-        sec3 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 3
+        # ---------------------------
+        sec3 = {}
+        sec3["n_entries"] = read_uint32(f)
+        sec3["entry"] = []
         for _ in range(sec3["n_entries"]):
             e = {}
-            e["u1"] = _read_float(f)
-            e["u2"] = _read_float(f)
-            u3_rep = _read_uint32(f); e["u3_rep"] = u3_rep
-            e["u3"] = [_read_float(f) for __ in range(u3_rep)]
-            u4_rep = _read_uint32(f); e["u4_rep"] = u4_rep
-            e["u4"] = [_read_float(f) for __ in range(u4_rep)]
-            e["u5"] = _read_uint16(f)
-            e["u6"] = _read_uint8(f)
-            e["u7"] = _read_uint16(f)
+            e["u1"] = read_float(f)
+            e["u2"] = read_float(f)
+            u3_rep = read_uint32(f)
+            e["u3_rep"] = u3_rep
+            e["u3"] = [read_float(f) for _ in range(u3_rep)]
+            u4_rep = read_uint32(f)
+            e["u4_rep"] = u4_rep
+            e["u4"] = [read_float(f) for _ in range(u4_rep)]
+            e["u5"] = read_uint16(f)
+            e["u6"] = read_uint8(f)
+            e["u7"] = read_uint16(f)
             sec3["entry"].append(e)
-        sec3["eos"] = _read_uint16(f)
+        sec3["eos"] = read_uint16(f)
         effdir["sec"][3] = sec3
 
-        # Section 4
-        sec4 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 4
+        # ---------------------------
+        sec4 = {}
+        sec4["n_entries"] = read_uint32(f)
+        sec4["entry"] = []
         for _ in range(sec4["n_entries"]):
             e = {}
-            u1_rep = _read_uint32(f); e["u1_rep"]=u1_rep
-            e["u1"] = {"u1":[], "u2":[], "u3":[]}
-            for __ in range(u1_rep):
-                e["u1"]["u1"].append(_read_float(f)); e["u1"]["u2"].append(_read_float(f)); e["u1"]["u3"].append(_read_float(f))
-            u2_rep = _read_uint32(f); e["u2_rep"] = u2_rep
-            e["u2"] = [_read_float(f) for __ in range(u2_rep)]
-            e["u3"] = _read_float(f)
+            u1_rep = read_uint32(f)
+            e["u1_rep"] = u1_rep
+            e["u1"] = {"u1": [], "u2": [], "u3": []}
+            for _r in range(u1_rep):
+                e["u1"]["u1"].append(read_float(f))
+                e["u1"]["u2"].append(read_float(f))
+                e["u1"]["u3"].append(read_float(f))
+            u2_rep = read_uint32(f)
+            e["u2_rep"] = u2_rep
+            e["u2"] = [read_float(f) for _ in range(u2_rep)]
+            e["u3"] = read_float(f)
             sec4["entry"].append(e)
+        # EOS for sec4 may or may not be present; MATLAB commented out
         effdir["sec"][4] = sec4
 
-        # Section 5
-        sec5 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 5
+        # ---------------------------
+        sec5 = {}
+        sec5["n_entries"] = read_uint32(f)
+        sec5["entry"] = []
         for _ in range(sec5["n_entries"]):
             e = {}
-            e["u1"] = _read_uint8(f); e["u2"] = _read_uint8(f)
-            e["resource_key"] = _read_uint32(f)
-            e["u3"] = _read_float(f); e["u4"] = _read_float(f)
-            e["u3b"] = _read_bytes(f,5)  # raw 5 bytes (ubit40)
-            e["u5"] = _read_float(f); e["u6"] = _read_float(f); e["u7"]=_read_float(f); e["u8"]=_read_float(f); e["u9"]=_read_float(f)
+            e["u1"] = read_uint8(f)
+            e["u2"] = read_uint8(f)
+            e["resource_key"] = read_uint32(f)
+            e["u3"] = read_float(f)
+            e["u4"] = read_float(f)
+            e["u3b"] = read_ubit_n_as_int(f, 5)  # ubit40
+            e["u5"] = read_float(f)
+            e["u6"] = read_float(f)
+            e["u7"] = read_float(f)
+            e["u8"] = read_float(f)
+            e["u9"] = read_float(f)
             sec5["entry"].append(e)
         effdir["sec"][5] = sec5
 
-        # Section 6
-        sec6 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 6
+        # ---------------------------
+        sec6 = {}
+        sec6["n_entries"] = read_uint32(f)
+        sec6["entry"] = []
         for _ in range(sec6["n_entries"]):
             e = {}
-            e["u1"] = _read_uint16(f)
-            str_rep = _read_uint32(f); e["str_rep"] = str_rep
-            e["str"] = f.read(str_rep).decode("latin1", errors="ignore") if str_rep>0 else ""
-            e["type_id"] = _read_uint8(f)
+            e["u1"] = read_uint16(f)
+            str_rep = read_uint32(f)
+            e["str_rep"] = str_rep
+            e["str"] = read_string(f, str_rep)
+            e["type_id"] = read_uint8(f)
             sec6["entry"].append(e)
         effdir["sec"][6] = sec6
 
-        # Section 7
-        sec7 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 7
+        # ---------------------------
+        sec7 = {}
+        sec7["n_entries"] = read_uint32(f)
+        sec7["entry"] = []
         for _ in range(sec7["n_entries"]):
             e = {}
-            e["u1_raw"] = _read_bytes(f,22)  # raw 22 bytes
-            e["u2"] = _read_float(f)
-            e["u3"] = _read_uint32(f); e["u4"] = _read_uint32(f)
-            e["u5"] = _read_bytes(f,8)
-            e["u6"] = _read_float(f); e["u7"] = _read_float(f); e["u8"]= _read_float(f); e["u9"]= _read_float(f)
-            e["u10"] = _read_uint32(f); e["u11"] = _read_uint32(f); e["u12"] = _read_uint32(f)
+            # MATLAB used ubit58 etc. — we read raw 22 bytes to be safe
+            e["u1_raw"] = read_bytes(f, 22)
+            e["u2"] = read_float(f)
+            e["u3"] = read_uint32(f)
+            e["u4"] = read_uint32(f)
+            e["u5"] = read_uint32(f)
+            e["u5b"] = read_uint32(f)
+            e["u6"] = read_float(f)
+            e["u7"] = read_float(f)
+            e["u8"] = read_float(f)
+            e["u9"] = read_float(f)
+            e["u10"] = read_uint32(f)
+            e["u11"] = read_uint32(f)
+            e["u12"] = read_uint32(f)
             sec7["entry"].append(e)
         effdir["sec"][7] = sec7
 
-        # Section 8
-        sec8 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 8
+        # ---------------------------
+        sec8 = {}
+        sec8["n_entries"] = read_uint32(f)
+        sec8["entry"] = []
         for _ in range(sec8["n_entries"]):
             e = {}
-            e["u1"] = _read_uint16(f)
-            u2_rep = _read_uint32(f); e["u2_rep"]=u2_rep
+            e["u1"] = read_uint16(f)
+            u2_rep = read_uint32(f)
+            e["u2_rep"] = u2_rep
             e["u2"] = []
-            for __ in range(u2_rep):
+            for _s in range(u2_rep):
                 sub = {}
-                sub["u1"] = _read_float(f)
-                sub["u2"] = _read_float(f)
-                srep = _read_uint32(f)
-                sub["str_rep"] = srep
-                sub["str"] = f.read(srep).decode("latin1", errors="ignore") if srep>0 else ""
+                sub["u1"] = read_float(f)
+                sub["u2"] = read_float(f)
+                slen = read_uint32(f)
+                sub["str_rep"] = slen
+                sub["str"] = read_string(f, slen)
                 e["u2"].append(sub)
-            e["u3"] = _read_uint32(f)
+            e["u3"] = read_uint32(f)
             sec8["entry"].append(e)
         effdir["sec"][8] = sec8
 
-        # Section 9
-        sec9 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 9
+        # ---------------------------
+        sec9 = {}
+        sec9["n_entries"] = read_uint32(f)
+        sec9["entry"] = []
         for _ in range(sec9["n_entries"]):
             e = {}
-            e["u1"] = _read_bytes(f,6)  # raw 6 bytes
-            e["sound_resource_key"] = _read_uint32(f)
-            e["u2"] = _read_float(f)
-            e["u3"] = _read_float(f)
+            e["u1"] = read_ubit_n_as_int(f, 6)  # ubit48 -> 6 bytes
+            e["sound_resource_key"] = read_uint32(f)
+            e["u2"] = read_float(f)
+            e["u3"] = read_float(f)
             sec9["entry"].append(e)
         effdir["sec"][9] = sec9
 
-        # Section 10
-        sec10 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 10
+        # ---------------------------
+        sec10 = {}
+        sec10["n_entries"] = read_uint32(f)
+        sec10["entry"] = []
         for _ in range(sec10["n_entries"]):
-            e = {"u1":_read_float(f), "u2":_read_float(f), "u3":_read_float(f)}
+            e = {}
+            e["u1"] = read_float(f)
+            e["u2"] = read_float(f)
+            e["u3"] = read_float(f)
             sec10["entry"].append(e)
-        sec10["eos"] = _read_uint16(f)
+        sec10["eos"] = read_uint16(f)
         effdir["sec"][10] = sec10
 
-        # Section 11
-        sec11 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 11
+        # ---------------------------
+        sec11 = {}
+        sec11["n_entries"] = read_uint32(f)
+        sec11["entry"] = []
         for _ in range(sec11["n_entries"]):
             e = {}
-            e["u1"] = _read_uint32(f)
-            srep = _read_uint32(f); e["str_rep"] = srep
-            e["str"] = f.read(srep).decode("latin1", errors="ignore") if srep>0 else ""
-            e["u2"] = _read_uint32(f); e["u3"] = _read_uint32(f); e["u4"]=_read_uint32(f)
-            e["u5"] = _read_float(f); e["u6"] = _read_float(f); e["u7"] = _read_float(f)
-            e["u8"] = _read_float(f); e["u9"] = _read_float(f)
+            e["u1"] = read_uint32(f)
+            str_rep = read_uint32(f)
+            e["str_rep"] = str_rep
+            e["str"] = read_string(f, str_rep) if str_rep > 0 else ""
+            e["u2"] = read_uint32(f)
+            e["u3"] = read_uint32(f)
+            e["u4"] = read_uint32(f)
+            e["u5"] = read_float(f)
+            e["u6"] = read_float(f)
+            e["u7"] = read_float(f)
+            e["u8"] = read_float(f)
+            e["u9"] = read_float(f)
             sec11["entry"].append(e)
-        sec11["eos"] = _read_uint16(f)
+        sec11["eos"] = read_uint16(f)
         effdir["sec"][11] = sec11
 
-        # Section 12 (heavy)
-        sec12 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 12
+        # ---------------------------
+        sec12 = {}
+        sec12["n_entries"] = read_uint32(f)
+        sec12["entry"] = []
         for _ in range(sec12["n_entries"]):
-            ent = {}
-            ent["u1"] = _read_uint32(f); ent["u2"] = _read_uint32(f)
-            prim_rep = _read_uint32(f); ent["prim_indx_rep"] = prim_rep
-            ent["prim_indx"] = []
-            for __ in range(prim_rep):
+            e = {}
+            e["u1"] = read_uint32(f)
+            e["u2"] = read_uint32(f)
+            prim_rep = read_uint32(f)
+            e["prim_indx_rep"] = prim_rep
+            e["prim_indx"] = []
+            for _p in range(prim_rep):
                 p = {}
-                p["str_rep"] = _read_uint32(f)
-                p["str"] = f.read(p["str_rep"]).decode("latin1",errors="ignore") if p["str_rep"]>0 else ""
-                p["indx_flag"] = _read_uint8(f)
-                p["u1"] = _read_float(f); p["u2"] = _read_float(f)
-                p["u3a"] = _read_uint32(f); p["u3b"] = _read_uint32(f)
-                p["u4"] = _read_float(f); p["u5"] = _read_float(f); p["u6"] = _read_float(f); p["u7"] = _read_float(f)
-                p["u8"] = _read_float(f); p["u9"] = _read_float(f)
-                p["xshift"] = _read_float(f); p["zshift"] = _read_float(f); p["yshift"] = _read_float(f)
-                p["u10"] = _read_float(f)
-                p["u11a"] = _read_bytes(f,5); p["u11b"] = _read_bytes(f,5)  # raw 5+5 = 10 bytes
-                p["u12"] = _read_float(f); p["u13"] = _read_float(f); p["u14"] = _read_float(f); p["u15"] = _read_float(f)
-                p["u16"] = _read_uint16(f); p["u17"] = _read_uint16(f)
-                p["indx_key"] = _read_uint32(f)
-                ent["prim_indx"].append(p)
+                str_rep = read_uint32(f)
+                p["str_rep"] = str_rep
+                p["str"] = read_string(f, str_rep) if str_rep > 0 else ""
+                p["indx_flag"] = read_uint8(f)
+                p["u1"] = read_float(f)
+                p["u2"] = read_float(f)
+                p["u3a"] = read_uint32(f)
+                p["u3b"] = read_uint32(f)
+                p["u4"] = read_float(f)
+                p["u5"] = read_float(f)
+                p["u6"] = read_float(f)
+                p["u7"] = read_float(f)
+                p["u8"] = read_float(f)
+                p["u9"] = read_float(f)
+                p["xshift"] = read_float(f)
+                p["zshift"] = read_float(f)
+                p["yshift"] = read_float(f)
+                p["u10"] = read_float(f)
+                p["u11a"] = read_ubit_n_as_int(f, 5)
+                p["u11b"] = read_ubit_n_as_int(f, 5)
+                p["u12"] = read_float(f)
+                p["u13"] = read_float(f)
+                p["u14"] = read_float(f)
+                p["u15"] = read_float(f)
+                p["u16"] = read_uint16(f)
+                p["u17"] = read_uint16(f)
+                p["indx_key"] = read_uint32(f)
+                e["prim_indx"].append(p)
 
             # secondary indices
-            secidx_rep = _read_uint32(f); ent["sec_indx_rep"] = secidx_rep
-            ent["sec_indx"] = []
-            for __ in range(secidx_rep):
+            secidx_rep = read_uint32(f)
+            e["sec_indx_rep"] = secidx_rep
+            e["sec_indx"] = []
+            for _s in range(secidx_rep):
                 s = {}
-                s["u1"] = _read_uint32(f)
-                s["str_rep"] = _read_uint32(f)
-                s["str"] = f.read(s["str_rep"]).decode("latin1",errors="ignore") if s["str_rep"]>0 else ""
-                s["u2"] = _read_uint32(f)
-                s["index_key"] = _read_uint32(f)
-                ent["sec_indx"].append(s)
+                s["u1"] = read_uint32(f)
+                s_str_rep = read_uint32(f)
+                s["str_rep"] = s_str_rep
+                s["str"] = read_string(f, s_str_rep) if s_str_rep > 0 else ""
+                s["u2"] = read_uint32(f)
+                s["index_key"] = read_uint32(f)
+                e["sec_indx"].append(s)
 
-            ent["u3"] = _read_uint32(f); ent["u4"] = _read_uint32(f); ent["u5"] = _read_uint32(f); ent["u6"] = _read_uint32(f)
-            sec12["entry"].append(ent)
+            e["u3"] = read_uint32(f)
+            e["u4"] = read_uint32(f)
+            e["u5"] = read_uint32(f)
+            e["u6"] = read_uint32(f)
+            sec12["entry"].append(e)
         effdir["sec"][12] = sec12
 
-        # Section 13
-        sec13 = {"entry":[]}
-        # MATLAB uses sec12.n_entries + 1 loop
-        for __ in range(effdir["sec"][12]["n_entries"] + 1):
+        # ---------------------------
+        # SECTION 13 (Main Effect Directory)
+        # ---------------------------
+        # Note: MATLAB loops sec12.n_entries + 1 times
+        sec13 = {}
+        sec13["entry"] = []
+        # Use sec12 n_entries if present
+        sec12_count = sec12.get("n_entries", 0)
+        for _ in range(sec12_count + 1):
             entry = {}
-            entry["str_rep"] = _read_uint32(f)
-            entry["str"] = f.read(entry["str_rep"]).decode("latin1",errors="ignore") if entry["str_rep"]>0 else ""
-            entry["index_key"] = _read_uint32(f)
+            srep = read_uint32(f)
+            entry["str_rep"] = srep
+            entry["str"] = read_string(f, srep) if srep > 0 else ""
+            entry["index_key"] = read_uint32(f)
             sec13["entry"].append(entry)
-        sec13["eos1"] = _read_uint8(f); sec13["eos2"] = _read_uint8(f)
+        sec13["eos1"] = read_uint8(f)
+        sec13["eos2"] = read_uint8(f)
         effdir["sec"][13] = sec13
 
-        # Section 13.5
+        # ---------------------------
+        # SECTION 13.5
+        # ---------------------------
         sec135 = {}
-        sec135["u1"] = _read_int8(f)
-        sec135["u2"] = _read_uint32(f)
-        for i in range(3,12):
-            sec135[f"u{i}"] = _read_float(f)
+        sec135["u1"] = read_int8(f)
+        sec135["u2"] = read_uint32(f)
+        sec135["u3"] = read_float(f)
+        sec135["u4"] = read_float(f)
+        sec135["u5"] = read_float(f)
+        sec135["u6"] = read_float(f)
+        sec135["u7"] = read_float(f)
+        sec135["u8"] = read_float(f)
+        sec135["u9"] = read_float(f)
+        sec135["u10"] = read_float(f)
+        sec135["u11"] = read_float(f)
         effdir["sec135"] = sec135
 
-        # Section 14
-        sec14 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 14
+        # ---------------------------
+        sec14 = {}
+        sec14["n_entries"] = read_uint32(f)
+        sec14["entry"] = []
         for _ in range(sec14["n_entries"]):
-            s = {}
-            s["str_rep"] = _read_uint32(f)
-            s["str"] = f.read(s["str_rep"]).decode("latin1",errors="ignore") if s["str_rep"]>0 else ""
-            s["group_prop"] = _read_uint32(f)
-            s["instance_prop"] = _read_uint32(f)
-            sec14["entry"].append(s)
-        sec14["eos"] = _read_uint16(f)
+            e = {}
+            srep = read_uint32(f)
+            e["str_rep"] = srep
+            e["str"] = read_string(f, srep) if srep > 0 else ""
+            e["group_prop"] = read_uint32(f)
+            e["instance_prop"] = read_uint32(f)
+            sec14["entry"].append(e)
+        sec14["eos"] = read_uint16(f)
         effdir["sec"][14] = sec14
 
-        # Section 15
-        sec15 = {"n_entries": _read_uint32(f), "entry":[]}
+        # ---------------------------
+        # SECTION 15
+        # ---------------------------
+        sec15 = {}
+        sec15["n_entries"] = read_uint32(f)
+        sec15["entry"] = []
         for _ in range(sec15["n_entries"]):
-            s = {}
-            s["class_id"] = _read_uint32(f)
-            s["str_rep"] = _read_uint32(f)
-            s["str"] = f.read(s["str_rep"]).decode("latin1",errors="ignore") if s["str_rep"]>0 else ""
-            sec15["entry"].append(s)
+            e = {}
+            e["class_id"] = read_uint32(f)
+            srep = read_uint32(f)
+            e["str_rep"] = srep
+            e["str"] = read_string(f, srep) if srep > 0 else ""
+            sec15["entry"].append(e)
         effdir["sec"][15] = sec15
 
+        # Done reading file; EOF should be next.
     return effdir
 
-# If invoked directly for quick test:
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: python read_effdir.py file.eff")
-    else:
-        d = read_effdir(sys.argv[1])
-        print("Sections read:", list(d["sec"].keys()))
+# Example usage:
+# eff = read_effdir("some_effect.eff")
+# print(eff["sec"][2]["entry"][0]["resource_key"])
