@@ -36,8 +36,10 @@ jobs:
           major, minor = map(int, version.split("."))
           new_version = f"{major}.{minor + 1}"
           version_file.write_text(new_version)
-          print(f"::set-output name=current::{version}")
-          print(f"::set-output name=new::{new_version}")
+          print(f"current={version}")
+          print(f"new={new_version}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"current={version}\nnew={new_version}\n")
           EOF
 
       - name: Create zip package
@@ -62,6 +64,6 @@ jobs:
           body: |
             🚀 **Effect Dir Editor v${{ steps.version.outputs.current }}**
             - Automatic build from main branch
-            - Includes latest features and bug fixes
+            - Includes latest features and fixes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
