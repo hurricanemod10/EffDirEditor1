@@ -67,3 +67,5 @@ jobs:
             - Includes README and requirements.txt  
             - Bug fixes and improvements
           files: EffDirEditor-Package-${{ github.run_number }}.zip
+
+Fixed workflow to include .exe build and auto release
