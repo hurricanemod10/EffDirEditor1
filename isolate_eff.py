@@ -1,4 +1,4 @@
-func isolate_eff
+# isolate_eff.py
 # Translate of IsolateEff.m to Python, keeps logic and indexing
 def isolate_eff(effdir, index, unique_effect_name):
     """
