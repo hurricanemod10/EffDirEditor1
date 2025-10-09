@@ -30,17 +30,16 @@ jobs:
         id: version
         run: |
           python - <<EOF
-          import re, pathlib
-          version_file = pathlib.Path("version.txt")
-          version = version_file.read_text().strip()
-          major, minor = map(int, version.split("."))
-          new_version = f"{major}.{minor + 1}"
-          version_file.write_text(new_version)
-          print(f"current={version}")
-          print(f"new={new_version}")
-          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-              fh.write(f"current={version}\nnew={new_version}\n")
-          EOF
+    import os, pathlib
+    version_file = pathlib.Path("version.txt")
+    version = version_file.read_text().strip()
+    major, minor = map(int, version.split("."))
+    new_version = f"{major}.{minor + 1}"
+    version_file.write_text(new_version)
+    with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+        fh.write(f"current={version}\n")
+        fh.write(f"new={new_version}\n")
+    EOF
 
       - name: Create zip package
         run: |
